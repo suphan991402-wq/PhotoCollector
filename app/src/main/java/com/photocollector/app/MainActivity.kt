@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import com.photocollector.app.Prefs.autoEnabled
 import com.photocollector.app.Prefs.botToken
 import com.photocollector.app.Prefs.chatId
+import com.photocollector.app.Prefs.devicePrefix
 import com.photocollector.app.Prefs.sentCount
 import com.photocollector.app.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
@@ -53,6 +54,7 @@ class MainActivity : AppCompatActivity() {
 
         b.etToken.setText(botToken)
         b.etChatId.setText(chatId)
+        b.etPrefix.setText(devicePrefix)
 
         b.btnSaveTest.setOnClickListener { saveAndTest() }
 
@@ -111,6 +113,7 @@ class MainActivity : AppCompatActivity() {
         }
         botToken = t
         chatId = c
+        devicePrefix = b.etPrefix.text.toString().trim()
         return true
     }
 

@@ -8,6 +8,7 @@ object Prefs {
     private const val KEY_ENABLED = "auto_enabled"
     private const val KEY_TOKEN = "bot_token"
     private const val KEY_CHAT = "chat_id"
+    private const val KEY_PREFIX = "device_prefix"
     private const val KEY_COUNT = "sent_count"
     private const val KEY_KNOWN = "known_ids"
 
@@ -28,6 +29,11 @@ object Prefs {
     var Context.chatId: String
         get() = sp(this).getString(KEY_CHAT, "") ?: ""
         set(v) { sp(this).edit().putString(KEY_CHAT, v.trim()).apply() }
+
+    /** ชื่อเครื่อง/ป้ายกำกับ (ไม่บังคับ) — เติมหน้าชื่อไฟล์ตอนส่ง เพื่อรู้ว่ารูปมาจากเครื่องไหน */
+    var Context.devicePrefix: String
+        get() = sp(this).getString(KEY_PREFIX, "") ?: ""
+        set(v) { sp(this).edit().putString(KEY_PREFIX, v.trim()).apply() }
 
     /** จำนวนรูปที่ส่งเข้ากลุ่มไปแล้ว (สะสม) */
     var Context.sentCount: Int

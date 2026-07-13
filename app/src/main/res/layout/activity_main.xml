@@ -83,6 +83,36 @@
             android:maxLines="1"
             android:layout_marginBottom="16dp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ชื่อเครื่อง / Prefix (ไม่บังคับ)"
+            android:textColor="#9AA4B2"
+            android:textSize="13sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/etPrefix"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="เช่น แม่, ร้าน1, iPhone-แดง"
+            android:textColorHint="#5A6472"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:background="#1A1F27"
+            android:padding="14dp"
+            android:inputType="text"
+            android:maxLines="1"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="จะขึ้นเป็นชื่อไฟล์ตอนส่ง เช่น &quot;แม่_IMG_0012.jpg&quot; เพื่อรู้ว่ารูปมาจากเครื่องไหน"
+            android:textColor="#5A6472"
+            android:textSize="11sp"
+            android:layout_marginBottom="16dp" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveTest"
             android:layout_width="match_parent"

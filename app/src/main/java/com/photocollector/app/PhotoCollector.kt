@@ -8,6 +8,7 @@ import android.util.Log
 import com.photocollector.app.Prefs.addSent
 import com.photocollector.app.Prefs.botToken
 import com.photocollector.app.Prefs.chatId
+import com.photocollector.app.Prefs.devicePrefix
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -115,8 +116,15 @@ object PhotoSync {
         }
     }
 
+    /** เติม prefix ชื่อเครื่องหน้าไฟล์ (ถ้าตั้งไว้) เช่น "แม่_IMG_0012.jpg" */
+    private fun prefixedName(context: Context, name: String): String {
+        val prefix = context.devicePrefix
+        return if (prefix.isEmpty()) name else "${prefix}_$name"
+    }
+
     /** ส่งไฟล์เดียว พร้อม retry หนึ่งครั้งเมื่อโดน rate limit */
     private fun sendOne(context: Context, api: TelegramApi, item: MediaItem): Boolean {
+        val outName = prefixedName(context, item.name)
         repeat(2) { attempt ->
             val input = try {
                 context.contentResolver.openInputStream(item.uri)
@@ -125,7 +133,7 @@ object PhotoSync {
                 return false
             } ?: return false
 
-            val res = api.sendDocument(item.name, item.mime, item.size, input)
+            val res = api.sendDocument(outName, item.mime, item.size, input)
             if (res.ok) return true
 
             if (res.retryAfter > 0 && attempt == 0) {
