@@ -26,9 +26,12 @@ object UpdateChecker {
     /** เช็คเวอร์ชันล่าสุด คืน null ถ้าเช็คไม่ได้ หรือไม่มี apk แนบมากับ release */
     fun fetchLatest(): LatestRelease? {
         return try {
-            val conn = URL(API_URL).openConnection() as HttpURLConnection
+            // ใส่ timestamp กัน cache ทุกชั้น (โปรแกรม/OS/proxy) ตอบข้อมูลเวอร์ชันเก่า
+            val conn = URL("$API_URL?_=${System.currentTimeMillis()}").openConnection() as HttpURLConnection
             conn.connectTimeout = 10000
             conn.readTimeout = 10000
+            conn.useCaches = false
+            conn.setRequestProperty("Cache-Control", "no-cache")
             conn.setRequestProperty("Accept", "application/vnd.github+json")
             conn.setRequestProperty("User-Agent", "PhotoCollector-App")
             val body = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
@@ -50,15 +53,19 @@ object UpdateChecker {
         }
     }
 
-    /** ดาวน์โหลด apk มาเก็บใน cache แล้วคืน content:// uri สำหรับเปิดตัวติดตั้ง */
-    fun download(context: Context, apkUrl: String, onProgress: ((percent: Int) -> Unit)? = null): Uri? {
+    /** ดาวน์โหลด apk ของเวอร์ชันที่ระบุมาเก็บใน cache แล้วคืน content:// uri สำหรับเปิดตัวติดตั้ง */
+    fun download(context: Context, latest: LatestRelease, onProgress: ((percent: Int) -> Unit)? = null): Uri? {
         return try {
             val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val file = File(dir, "update.apk")
-            val conn = URL(apkUrl).openConnection() as HttpURLConnection
+            // ลบไฟล์อัพเดทเก่าที่ค้างอยู่ทั้งหมดก่อน กันหยิบไฟล์เวอร์ชันเก่ามาติดตั้งผิด
+            dir.listFiles()?.forEach { it.delete() }
+            // ใส่เลขเวอร์ชันในชื่อไฟล์ กันระบบ/ตัวติดตั้งเอาไฟล์ชื่อเดิมที่เคย cache ไว้มาใช้
+            val file = File(dir, "update-${latest.tag}.apk")
+            val conn = URL(latest.apkUrl).openConnection() as HttpURLConnection
             conn.connectTimeout = 15000
             conn.readTimeout = 30000
             conn.instanceFollowRedirects = true
+            conn.useCaches = false
             val total = conn.contentLength
             conn.inputStream.use { input ->
                 FileOutputStream(file).use { output ->

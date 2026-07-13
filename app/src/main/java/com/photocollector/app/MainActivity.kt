@@ -187,15 +187,15 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("มีเวอร์ชันใหม่ ${latest.tag}")
             .setMessage("ตอนนี้ใช้ v${BuildConfig.VERSION_CODE} อยู่ ต้องการอัพเดทเลยไหม?")
-            .setPositiveButton("อัพเดทเลย") { _, _ -> downloadAndInstall(latest.apkUrl) }
+            .setPositiveButton("อัพเดทเลย") { _, _ -> downloadAndInstall(latest) }
             .setNegativeButton("ไว้ทีหลัง", null)
             .show()
     }
 
-    private fun downloadAndInstall(apkUrl: String) {
+    private fun downloadAndInstall(latest: UpdateChecker.LatestRelease) {
         toast("กำลังดาวน์โหลดอัพเดท…")
         io.execute {
-            val uri = UpdateChecker.download(applicationContext, apkUrl) { percent ->
+            val uri = UpdateChecker.download(applicationContext, latest) { percent ->
                 runOnUiThread { b.tvStatus.text = "กำลังดาวน์โหลดอัพเดท $percent%…" }
             }
             runOnUiThread {
