@@ -59,7 +59,14 @@ class MainActivity : AppCompatActivity() {
             sendAsPhoto = checked
         }
 
-        b.btnSaveTest.setOnClickListener { saveAndTest() }
+        b.btnSaveTest.setOnClickListener {
+            if (!Prefs.hasConfig()) {
+                toast("แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)")
+                return@setOnClickListener
+            }
+            savePrefixField()
+            ensurePermsThen { saveAndTest() }
+        }
 
         b.switchAuto.isChecked = autoEnabled
         b.switchAuto.setOnCheckedChangeListener { _, checked ->
@@ -128,19 +135,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveAndTest() {
-        if (!Prefs.hasConfig()) {
-            toast("แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)")
-            return
-        }
-        savePrefixField()
         toast("กำลังทดสอบการเชื่อมต่อ…")
         val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
+        val prefix = devicePrefix
+        val label = if (prefix.isNotEmpty()) "เครื่อง \"$prefix\"" else "เครื่องนี้ (ยังไม่ได้ตั้งชื่อเครื่อง/Prefix)"
         io.execute {
-            val res = api.sendMessage("✅ เชื่อมต่อสำเร็จ — แอปรวมรูปพร้อมส่งเข้ากลุ่มนี้แล้ว")
+            val msgRes = api.sendMessage("✅ เชื่อมต่อสำเร็จ — $label พร้อมส่งเข้ากลุ่มนี้แล้ว")
+            if (!msgRes.ok) {
+                runOnUiThread {
+                    refreshStatus()
+                    toast("ไม่สำเร็จ: ${msgRes.error ?: "ตรวจ token/chat id อีกครั้ง"}")
+                }
+                return@execute
+            }
+            // ทดสอบส่งรูปล่าสุดในเครื่องด้วย เพื่อเช็ค pipeline ส่งรูปจริง ไม่ใช่แค่ข้อความ
+            val photoRes = PhotoSync.sendLatestPhoto(applicationContext)
             runOnUiThread {
                 refreshStatus()
-                if (res.ok) toast("สำเร็จ! เช็คในกลุ่ม Telegram ได้เลย")
-                else toast("ไม่สำเร็จ: ${res.error ?: "ตรวจ token/chat id อีกครั้ง"}")
+                val extra = when {
+                    photoRes == null -> " (ไม่พบรูปในเครื่องให้ทดสอบส่ง)"
+                    photoRes.ok -> " + ส่งรูปล่าสุดในเครื่องสำเร็จ"
+                    else -> " (ส่งรูปทดสอบไม่สำเร็จ: ${photoRes.error})"
+                }
+                toast("สำเร็จ! เช็คในกลุ่ม Telegram ได้เลย$extra")
             }
         }
     }

@@ -120,6 +120,17 @@ object PhotoSync {
         }
     }
 
+    /**
+     * ส่งรูปล่าสุดในเครื่อง (ถ้ามี) ใช้ตอนกด "ทดสอบส่งข้อความ" เพื่อทดสอบ pipeline ส่งรูปจริง
+     * ไม่เกี่ยวกับระบบกันส่งซ้ำ — ไม่ถูกจำเป็น known และไม่นับใน sentCount
+     */
+    fun sendLatestPhoto(context: Context): TelegramApi.Result? {
+        if (!Prefs.hasConfig()) return null
+        val latest = queryImages(context).lastOrNull() ?: return null
+        val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
+        return sendOne(context, api, latest)
+    }
+
     /** เติม prefix ชื่อเครื่องหน้าไฟล์ (ถ้าตั้งไว้) เช่น "แม่_IMG_0012.jpg" */
     private fun prefixedName(context: Context, name: String): String {
         val prefix = context.devicePrefix
