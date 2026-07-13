@@ -161,7 +161,27 @@
             android:layout_height="wrap_content"
             android:text="ส่งเข้ากลุ่มไปแล้วทั้งหมด: 0 รูป"
             android:textColor="#FFFFFF"
-            android:textSize="15sp" />
+            android:textSize="15sp"
+            android:layout_marginBottom="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCheckUpdate"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ตรวจสอบอัพเดท"
+            android:textSize="14sp"
+            app:cornerRadius="12dp" />
+
+        <TextView
+            android:id="@+id/tvVersion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:text="v1"
+            android:textColor="#5A6472"
+            android:textSize="11sp" />
 
     </LinearLayout>
 </ScrollView>

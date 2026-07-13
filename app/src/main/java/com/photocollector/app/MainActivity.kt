@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.photocollector.app.Prefs.autoEnabled
@@ -95,6 +96,10 @@ class MainActivity : AppCompatActivity() {
             savePrefixField()
             ensurePermsThen { sendAllExisting() }
         }
+
+        b.tvVersion.text = "v${BuildConfig.VERSION_CODE}"
+        b.btnCheckUpdate.setOnClickListener { checkForUpdate(manual = true) }
+        checkForUpdate(manual = false)
     }
 
     override fun onResume() {
@@ -144,6 +149,49 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 refreshStatus()
                 toast(if (n > 0) "ส่งรูปเก่าเข้ากลุ่ม $n รูปแล้ว" else "ไม่พบรูปให้ส่ง หรือส่งไม่สำเร็จ")
+            }
+        }
+    }
+
+    // ---- อัพเดทแอป ----
+
+    /** เช็คเวอร์ชันล่าสุดจาก GitHub — manual=true คือกดปุ่มเอง (แจ้งผลทุกกรณี), false คือเช็คเงียบ ๆ ตอนเปิดแอป */
+    private fun checkForUpdate(manual: Boolean) {
+        if (manual) toast("กำลังเช็คอัพเดท…")
+        io.execute {
+            val latest = UpdateChecker.fetchLatest()
+            runOnUiThread {
+                when {
+                    latest == null -> if (manual) toast("เช็คอัพเดทไม่สำเร็จ (ต้องต่อเน็ต)")
+                    latest.versionCode > BuildConfig.VERSION_CODE -> showUpdateDialog(latest)
+                    manual -> toast("เป็นเวอร์ชันล่าสุดแล้ว (v${BuildConfig.VERSION_CODE})")
+                }
+            }
+        }
+    }
+
+    private fun showUpdateDialog(latest: UpdateChecker.LatestRelease) {
+        AlertDialog.Builder(this)
+            .setTitle("มีเวอร์ชันใหม่ ${latest.tag}")
+            .setMessage("ตอนนี้ใช้ v${BuildConfig.VERSION_CODE} อยู่ ต้องการอัพเดทเลยไหม?")
+            .setPositiveButton("อัพเดทเลย") { _, _ -> downloadAndInstall(latest.apkUrl) }
+            .setNegativeButton("ไว้ทีหลัง", null)
+            .show()
+    }
+
+    private fun downloadAndInstall(apkUrl: String) {
+        toast("กำลังดาวน์โหลดอัพเดท…")
+        io.execute {
+            val uri = UpdateChecker.download(applicationContext, apkUrl) { percent ->
+                runOnUiThread { b.tvStatus.text = "กำลังดาวน์โหลดอัพเดท $percent%…" }
+            }
+            runOnUiThread {
+                refreshStatus()
+                if (uri != null) {
+                    startActivity(UpdateChecker.installIntent(uri))
+                } else {
+                    toast("ดาวน์โหลดอัพเดทไม่สำเร็จ ลองใหม่อีกครั้ง")
+                }
             }
         }
     }
