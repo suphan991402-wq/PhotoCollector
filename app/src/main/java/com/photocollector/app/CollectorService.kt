@@ -83,7 +83,7 @@ class CollectorService : Service() {
 
     private fun runSend() {
         workerHandler.post {
-            val n = PhotoSync.sendPending(applicationContext) { sent, total ->
+            val result = PhotoSync.sendPending(applicationContext) { sent, total ->
                 mainHandler.post {
                     startForegroundNotification("กำลังส่ง $sent/$total เข้ากลุ่ม…")
                 }
@@ -91,8 +91,11 @@ class CollectorService : Service() {
             val total = applicationContext.sentCount
             mainHandler.post {
                 startForegroundNotification(
-                    if (n > 0) "ส่งเข้ากลุ่มแล้วทั้งหมด $total รูป"
-                    else "กำลังเฝ้าดูรูปใหม่ (ส่งแล้ว $total รูป)"
+                    when {
+                        result.sent > 0 -> "ส่งเข้ากลุ่มแล้วทั้งหมด $total รูป"
+                        result.error != null -> "ส่งไม่สำเร็จ: ${result.error} (ส่งแล้ว $total รูป)"
+                        else -> "กำลังเฝ้าดูรูปใหม่ (ส่งแล้ว $total รูป)"
+                    }
                 )
             }
         }

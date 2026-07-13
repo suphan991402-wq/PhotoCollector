@@ -73,35 +73,39 @@ object PhotoSync {
         Log.d(TAG, "baseline set: ${keys.size} existing photos marked known")
     }
 
+    /** ผลของการซิงก์หนึ่งรอบ — error ไม่ null เมื่อมีรูปรอส่งแต่ส่งไม่สำเร็จ (ใช้ debug ว่าทำไมไม่เข้ากลุ่ม) */
+    data class SyncResult(val sent: Int, val pendingCount: Int, val error: String? = null)
+
     /**
      * ส่งรูปที่ยังไม่เคยส่ง (ไม่อยู่ใน known) เข้ากลุ่ม Telegram
-     * @return จำนวนรูปที่ส่งสำเร็จรอบนี้
      */
-    fun sendPending(context: Context, onProgress: ((sent: Int, total: Int) -> Unit)? = null): Int {
+    fun sendPending(context: Context, onProgress: ((sent: Int, total: Int) -> Unit)? = null): SyncResult {
         if (!Prefs.hasConfig()) {
             Log.w(TAG, "no token/chatId configured (BuildConfig empty)")
-            return 0
+            return SyncResult(0, 0, "แอปยังไม่ได้ตั้งค่า Bot")
         }
         if (!running.compareAndSet(false, true)) {
             Log.d(TAG, "already running, skip")
-            return 0
+            return SyncResult(0, 0, null)
         }
         try {
             val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
             val known = Prefs.knownIds(context)
             val pending = queryImages(context).filter { it.key !in known }
-            if (pending.isEmpty()) return 0
+            if (pending.isEmpty()) return SyncResult(0, 0, null)
 
             var sent = 0
+            var lastError: String? = null
             for ((index, item) in pending.withIndex()) {
-                val ok = sendOne(context, api, item)
-                if (ok) {
+                val res = sendOne(context, api, item)
+                if (res.ok) {
                     sent++
                     Prefs.addKnown(context, listOf(item.key))
                     onProgress?.invoke(sent, pending.size)
                 } else {
                     // ส่งไม่สำเร็จ (เช่น เน็ตหลุด) หยุดรอบนี้ ไว้ลองใหม่รอบหน้า
-                    Log.w(TAG, "stop at index $index due to failure")
+                    lastError = res.error
+                    Log.w(TAG, "stop at index $index due to failure: ${res.error}")
                     break
                 }
                 if (index < pending.size - 1) {
@@ -110,7 +114,7 @@ object PhotoSync {
             }
             if (sent > 0) addSent(context, sent)
             Log.d(TAG, "sent $sent / ${pending.size}")
-            return sent
+            return SyncResult(sent, pending.size, lastError)
         } finally {
             running.set(false)
         }
@@ -123,15 +127,15 @@ object PhotoSync {
     }
 
     /** ส่งไฟล์เดียว พร้อม retry หนึ่งครั้งเมื่อโดน rate limit */
-    private fun sendOne(context: Context, api: TelegramApi, item: MediaItem): Boolean {
+    private fun sendOne(context: Context, api: TelegramApi, item: MediaItem): TelegramApi.Result {
         val outName = prefixedName(context, item.name)
         repeat(2) { attempt ->
             val input = try {
                 context.contentResolver.openInputStream(item.uri)
             } catch (e: Exception) {
                 Log.w(TAG, "cannot open ${item.name}: ${e.message}")
-                return false
-            } ?: return false
+                return TelegramApi.Result(false, error = "เปิดไฟล์รูปไม่ได้: ${e.message}")
+            } ?: return TelegramApi.Result(false, error = "เปิดไฟล์รูปไม่ได้ (${item.name})")
 
             // ส่งเป็นรูปพรีวิว (บีบอัด) ถ้าเปิดตัวเลือกไว้และไฟล์ไม่เกินขีดจำกัดของ sendPhoto
             // ไม่งั้นส่งแบบไฟล์คุณภาพเต็มตามปกติ
@@ -139,7 +143,7 @@ object PhotoSync {
                 api.sendPhoto(outName, item.mime, input)
             else
                 api.sendDocument(outName, item.mime, input)
-            if (res.ok) return true
+            if (res.ok) return res
 
             if (res.retryAfter > 0 && attempt == 0) {
                 val waitMs = (res.retryAfter + 1) * 1000L
@@ -147,9 +151,9 @@ object PhotoSync {
                 try { Thread.sleep(waitMs) } catch (_: InterruptedException) {}
                 // วนไปลองใหม่อีกครั้ง
             } else {
-                return false
+                return res
             }
         }
-        return false
+        return TelegramApi.Result(false, error = "ลองส่งซ้ำแล้วไม่สำเร็จ")
     }
 }

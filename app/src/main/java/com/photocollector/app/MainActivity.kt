@@ -143,12 +143,18 @@ class MainActivity : AppCompatActivity() {
         io.execute {
             // ล้างประวัติ เพื่อส่งรูปที่มีอยู่ทั้งหมดในเครื่อง
             Prefs.clearKnown(applicationContext)
-            val n = PhotoSync.sendPending(applicationContext) { sent, total ->
+            val result = PhotoSync.sendPending(applicationContext) { sent, total ->
                 runOnUiThread { b.tvStatus.text = "กำลังส่ง $sent/$total …" }
             }
             runOnUiThread {
                 refreshStatus()
-                toast(if (n > 0) "ส่งรูปเก่าเข้ากลุ่ม $n รูปแล้ว" else "ไม่พบรูปให้ส่ง หรือส่งไม่สำเร็จ")
+                toast(
+                    when {
+                        result.sent > 0 -> "ส่งรูปเก่าเข้ากลุ่ม ${result.sent} รูปแล้ว"
+                        result.pendingCount == 0 -> "ไม่พบรูปในเครื่องเลย"
+                        else -> "ส่งไม่สำเร็จ: ${result.error ?: "ไม่ทราบสาเหตุ"}"
+                    }
+                )
             }
         }
     }
