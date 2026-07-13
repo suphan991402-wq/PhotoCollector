@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.photocollector.app.Prefs.addSent
 import com.photocollector.app.Prefs.devicePrefix
+import com.photocollector.app.Prefs.sendAsPhoto
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -16,6 +17,7 @@ object PhotoSync {
 
     private const val TAG = "PhotoSync"
     private const val DELAY_BETWEEN_MS = 1200L   // กัน rate limit ของ Telegram
+    private const val MAX_SEND_PHOTO_BYTES = 10L * 1024 * 1024   // ข้อจำกัดของ Telegram sendPhoto
     private val running = AtomicBoolean(false)
 
     data class MediaItem(
@@ -131,7 +133,12 @@ object PhotoSync {
                 return false
             } ?: return false
 
-            val res = api.sendDocument(outName, item.mime, item.size, input)
+            // ส่งเป็นรูปพรีวิว (บีบอัด) ถ้าเปิดตัวเลือกไว้และไฟล์ไม่เกินขีดจำกัดของ sendPhoto
+            // ไม่งั้นส่งแบบไฟล์คุณภาพเต็มตามปกติ
+            val res = if (context.sendAsPhoto && item.size in 1..MAX_SEND_PHOTO_BYTES)
+                api.sendPhoto(outName, item.mime, input)
+            else
+                api.sendDocument(outName, item.mime, input)
             if (res.ok) return true
 
             if (res.retryAfter > 0 && attempt == 0) {

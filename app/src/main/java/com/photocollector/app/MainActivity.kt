@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.photocollector.app.Prefs.autoEnabled
 import com.photocollector.app.Prefs.devicePrefix
+import com.photocollector.app.Prefs.sendAsPhoto
 import com.photocollector.app.Prefs.sentCount
 import com.photocollector.app.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
@@ -51,6 +52,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(b.root)
 
         b.etPrefix.setText(devicePrefix)
+
+        b.switchPhotoMode.isChecked = sendAsPhoto
+        b.switchPhotoMode.setOnCheckedChangeListener { _, checked ->
+            sendAsPhoto = checked
+        }
 
         b.btnSaveTest.setOnClickListener { saveAndTest() }
 
