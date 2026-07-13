@@ -73,11 +73,18 @@ class MainActivity : AppCompatActivity() {
                 savePrefixField()
                 ensurePermsThen {
                     autoEnabled = true
-                    // ตั้ง baseline: ไม่ส่งรูปเก่าที่มีอยู่ ส่งเฉพาะรูปใหม่หลังจากนี้
-                    io.execute { PhotoSync.markAllExistingAsKnown(applicationContext) }
-                    CollectorService.start(this)
-                    toast("เปิดส่งอัตโนมัติแล้ว (เฉพาะรูปใหม่หลังจากนี้)")
-                    setSwitchChecked(true)
+                    toast("กำลังเตรียมระบบ…")
+                    // ตั้ง baseline ให้เสร็จก่อน (จำรูปที่มีอยู่ทั้งหมดว่า "รู้จักแล้ว") แล้วค่อยเริ่ม service
+                    // ต้องรอให้เสร็จจริง ๆ ไม่งั้น service อาจเริ่มเช็ครูปก่อน baseline เขียนเสร็จ
+                    // แล้วเข้าใจผิดว่ารูปเก่าทั้งหมดเป็นรูปใหม่ ส่งรัวออกไปทั้งเครื่อง
+                    io.execute {
+                        PhotoSync.markAllExistingAsKnown(applicationContext)
+                        runOnUiThread {
+                            CollectorService.start(this)
+                            toast("เปิดส่งอัตโนมัติแล้ว (เฉพาะรูปใหม่หลังจากนี้)")
+                            setSwitchChecked(true)
+                        }
+                    }
                 }
                 // ถ้ายังไม่ได้สิทธิ์ ให้ปิดสวิตช์ไว้ก่อน เดี๋ยว callback จะเปิดให้เอง
                 if (!hasReadPermission()) setSwitchChecked(false)
