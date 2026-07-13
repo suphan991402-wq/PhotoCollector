@@ -23,8 +23,8 @@ android {
         applicationId "com.photocollector.app"
         minSdk 24
         targetSdk 34
-        versionCode 11
-        versionName "2.0"
+        versionCode 12
+        versionName "2.1"
         buildConfigField "String", "BOT_TOKEN", "\"${botToken}\""
         buildConfigField "String", "CHAT_ID", "\"${chatId}\""
         buildConfigField "String", "CHAT_IDS_EXTRA", "\"${chatIdsExtra}\""
