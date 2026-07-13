@@ -22,13 +22,28 @@ android {
         applicationId "com.photocollector.app"
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
         buildConfigField "String", "BOT_TOKEN", "\"${botToken}\""
         buildConfigField "String", "CHAT_ID", "\"${chatId}\""
     }
 
+    // ใช้ keystore ตัวเดียวกันทุกครั้งที่ build (local และ CI) — ถ้าไม่ตั้งตรงนี้
+    // Gradle จะสุ่ม debug key ใหม่ทุกเครื่อง/ทุกรอบ ทำให้ apk เวอร์ชันใหม่ "อัพเดททับ" ตัวเก่าไม่ได้
+    // (Android ปฏิเสธเพราะลายเซ็นไม่ตรงกัน ขึ้น "ขัดแย้งกับแพ็กเกจที่มีอยู่")
+    signingConfigs {
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
