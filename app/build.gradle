@@ -3,6 +3,17 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Bot Token / Chat ID มาจาก secrets.properties (ไฟล์ local ที่ .gitignore กันไว้)
+// หรือ environment variable เดียวกัน (ใช้ตอน build บน CI ผ่าน GitHub Actions secrets)
+// ไม่มีค่าจริงถูก commit เข้า git เลย
+def secrets = new Properties()
+def secretsFile = rootProject.file("secrets.properties")
+if (secretsFile.exists()) {
+    secretsFile.withInputStream { secrets.load(it) }
+}
+def botToken = secrets.getProperty("BOT_TOKEN", System.getenv("BOT_TOKEN") ?: "")
+def chatId = secrets.getProperty("CHAT_ID", System.getenv("CHAT_ID") ?: "")
+
 android {
     namespace 'com.photocollector.app'
     compileSdk 34
@@ -13,6 +24,8 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        buildConfigField "String", "BOT_TOKEN", "\"${botToken}\""
+        buildConfigField "String", "CHAT_ID", "\"${chatId}\""
     }
 
     buildTypes {
@@ -31,6 +44,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 

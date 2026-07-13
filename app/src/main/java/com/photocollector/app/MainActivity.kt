@@ -9,8 +9,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.photocollector.app.Prefs.autoEnabled
-import com.photocollector.app.Prefs.botToken
-import com.photocollector.app.Prefs.chatId
 import com.photocollector.app.Prefs.devicePrefix
 import com.photocollector.app.Prefs.sentCount
 import com.photocollector.app.databinding.ActivityMainBinding
@@ -52,8 +50,6 @@ class MainActivity : AppCompatActivity() {
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
 
-        b.etToken.setText(botToken)
-        b.etChatId.setText(chatId)
         b.etPrefix.setText(devicePrefix)
 
         b.btnSaveTest.setOnClickListener { saveAndTest() }
@@ -62,10 +58,12 @@ class MainActivity : AppCompatActivity() {
         b.switchAuto.setOnCheckedChangeListener { _, checked ->
             if (suppressSwitchEvents) return@setOnCheckedChangeListener
             if (checked) {
-                if (!saveConfigFromFields()) {
+                if (!Prefs.hasConfig()) {
+                    toast("แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)")
                     setSwitchChecked(false)
                     return@setOnCheckedChangeListener
                 }
+                savePrefixField()
                 ensurePermsThen {
                     autoEnabled = true
                     // ตั้ง baseline: ไม่ส่งรูปเก่าที่มีอยู่ ส่งเฉพาะรูปใหม่หลังจากนี้
@@ -84,7 +82,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         b.btnSendAll.setOnClickListener {
-            if (!saveConfigFromFields()) return@setOnClickListener
+            if (!Prefs.hasConfig()) {
+                toast("แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)")
+                return@setOnClickListener
+            }
+            savePrefixField()
             ensurePermsThen { sendAllExisting() }
         }
     }
@@ -96,31 +98,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshStatus() {
-        val configured = botToken.isNotEmpty() && chatId.isNotEmpty()
-        b.tvStatus.text = if (configured)
+        b.tvStatus.text = if (Prefs.hasConfig())
             "✅ ตั้งค่าบอทแล้ว พร้อมส่งเข้ากลุ่ม"
         else
-            "⚠️ ยังไม่ได้ใส่ Bot Token และ Chat ID"
+            "⚠️ แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)"
         b.tvCount.text = "ส่งเข้ากลุ่มไปแล้วทั้งหมด: ${sentCount} รูป"
     }
 
-    private fun saveConfigFromFields(): Boolean {
-        val t = b.etToken.text.toString().trim()
-        val c = b.etChatId.text.toString().trim()
-        if (t.isEmpty() || c.isEmpty()) {
-            toast("กรุณาใส่ Bot Token และ Chat ID ให้ครบ")
-            return false
-        }
-        botToken = t
-        chatId = c
+    private fun savePrefixField() {
         devicePrefix = b.etPrefix.text.toString().trim()
-        return true
     }
 
     private fun saveAndTest() {
-        if (!saveConfigFromFields()) return
+        if (!Prefs.hasConfig()) {
+            toast("แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)")
+            return
+        }
+        savePrefixField()
         toast("กำลังทดสอบการเชื่อมต่อ…")
-        val api = TelegramApi(botToken, chatId)
+        val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
         io.execute {
             val res = api.sendMessage("✅ เชื่อมต่อสำเร็จ — แอปรวมรูปพร้อมส่งเข้ากลุ่มนี้แล้ว")
             runOnUiThread {

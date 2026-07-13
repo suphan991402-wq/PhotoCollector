@@ -1,7 +1,7 @@
 # ส่งรูปเข้ากลุ่ม (Telegram Photo Sender)
 
 แอป Android สำหรับ **หลายเครื่อง → ส่งรูปเข้ากลุ่ม Telegram เดียวกันอัตโนมัติ**
-ลงแอปในทุกเครื่อง ใส่ Bot Token + Chat ID ของกลุ่มเดียวกัน เจอรูปใหม่ปุ๊บ ยิงเข้ากลุ่มปั๊บ
+Bot Token + Chat ID ถูก**ฝังไว้ในแอปตอน build แล้ว** (ผู้ดูแลระบบตั้งครั้งเดียว) ผู้ใช้แต่ละเครื่องแค่ลงแอปแล้วตั้งชื่อเครื่อง/Prefix เท่านั้น เจอรูปใหม่ปุ๊บ ยิงเข้ากลุ่มปั๊บ
 
 - ส่ง **ไฟล์เต็มคุณภาพ** (sendDocument ไม่บีบรูป)
 - ทำงาน **เบื้องหลังอัตโนมัติ** ทุกเครื่อง
@@ -21,27 +21,40 @@
 
 ---
 
-## ขั้นที่ 2: สร้างไฟล์ .apk (ฟรี ไม่ต้องลงโปรแกรม)
+## ขั้นที่ 2: ตั้งค่า Bot Token / Chat ID (ทำโดยผู้พัฒนา ครั้งเดียวต่อ repo)
+
+ค่านี้**ไม่ถูก commit ขึ้น git** และ**ไม่มีให้กรอกในแอปอีกต่อไป** — ฝังเข้าไปตอน build เท่านั้น
+
+**Build ในเครื่องตัวเอง:**
+1. คัดลอก `secrets.properties.example` → ตั้งชื่อ `secrets.properties` (อยู่ root โปรเจกต์ ระดับเดียวกับ `build.gradle`)
+2. ใส่ค่าจริง `BOT_TOKEN=...` และ `CHAT_ID=...` ในไฟล์นั้น
+3. `gradle assembleDebug`
+
+**Build ผ่าน GitHub Actions:** ไปที่ repo → **Settings → Secrets and variables → Actions** → **New repository secret** → เพิ่ม `BOT_TOKEN` และ `CHAT_ID` (ค่าเดียวกับข้างบน) ครั้งเดียว หลังจากนั้นทุก push จะ build โดยดึงค่าจาก secrets อัตโนมัติ
+
+---
+
+## ขั้นที่ 3: สร้างไฟล์ .apk (ฟรี ไม่ต้องลงโปรแกรม)
 
 ใช้ **GitHub Actions** build ให้บนคลาวด์:
 
 1. ล็อกอิน [github.com](https://github.com) → **New repository** → ตั้งชื่อ เช่น `photo-sender` → Create
-2. **Add file → Upload files** → ลากไฟล์ทั้งหมดในโฟลเดอร์ `PhotoCollector` นี้ลงไป (รวมโฟลเดอร์ `.github/` ด้วย) → **Commit changes**
-3. ไปแท็บ **Actions** → workflow **Build APK** จะรันเอง (หรือกด Run workflow) รอ ~3–5 นาที จนขึ้น ✅
+2. **Add file → Upload files** → ลากไฟล์ทั้งหมดในโฟลเดอร์ `PhotoCollector` นี้ลงไป (รวมโฟลเดอร์ `.github/` ด้วย ไม่ต้องอัป `secrets.properties`) → **Commit changes**
+3. ตั้งค่า repository secrets ตามขั้นที่ 2 ก่อน แล้วค่อยไปแท็บ **Actions** → workflow **Build APK** จะรันเอง (หรือกด Run workflow) รอ ~3–5 นาที จนขึ้น ✅
 4. เข้าไปในงานที่เสร็จ → ล่างสุดหัวข้อ **Artifacts** → ดาวน์โหลด **PhotoCollector-apk**
 5. แตก zip จะได้ **app-debug.apk**
 
-> หรือเปิดโปรเจกต์ใน Android Studio → **Build → Build APK(s)** ก็ได้ไฟล์เดียวกัน
+> หรือเปิดโปรเจกต์ใน Android Studio → **Build → Build APK(s)** ก็ได้ไฟล์เดียวกัน (ต้องมี `secrets.properties` ในเครื่องก่อน)
 
 ---
 
-## ขั้นที่ 3: ติดตั้งและตั้งค่าในทุกเครื่อง
+## ขั้นที่ 4: ติดตั้งและตั้งค่าในทุกเครื่อง
 
-ทำเหมือนกันในทุกมือถือที่อยากให้ส่งรูปเข้ากลุ่ม:
+ทำเหมือนกันในทุกมือถือที่อยากให้ส่งรูปเข้ากลุ่ม (ไม่ต้องยุ่งกับ Bot Token/Chat ID แล้ว เพราะฝังมาในตัว apk แล้ว):
 
 1. ส่งไฟล์ `app-debug.apk` เข้ามือถือ → กดติดตั้ง
    *(ถ้าติดตั้งไม่ได้ ให้เปิด ตั้งค่า → อนุญาตติดตั้งจากแหล่งที่ไม่รู้จัก ให้ตัวจัดการไฟล์/เบราว์เซอร์ก่อน)*
-2. เปิดแอป **ส่งรูปเข้ากลุ่ม** → ใส่ **Bot Token** และ **Chat ID** (อันเดียวกันทุกเครื่อง)
+2. เปิดแอป **ส่งรูปเข้ากลุ่ม** → (ไม่บังคับ) ใส่ **ชื่อเครื่อง / Prefix** เพื่อให้รู้ว่ารูปมาจากเครื่องไหนตอนดูในกลุ่ม
 3. กด **"บันทึก และทดสอบส่งข้อความ"** → ถ้าขึ้นสำเร็จ จะมีข้อความเด้งในกลุ่ม = พร้อมใช้งาน
 4. เปิดสวิตช์ **"ส่งรูปใหม่อัตโนมัติ"** → อนุญาตเข้าถึงรูปภาพ + การแจ้งเตือน
    ตั้งแต่นี้ รูปใหม่ทุกใบ (โหลด/เซฟ/ถ่าย) จะถูกส่งเข้ากลุ่มเองทันที
@@ -54,7 +67,7 @@
 - **โหมดอัตโนมัติจะส่งเฉพาะรูปใหม่** ที่เกิดขึ้นหลังเปิดสวิตช์ (ไม่สแปมรูปเก่า) ถ้าอยากส่งของเดิมด้วยให้กดปุ่ม "ส่งรูปเก่าทั้งหมด"
 - **ขนาดไฟล์**: บอท Telegram ส่งไฟล์ได้สูงสุด ~50 MB ต่อรูป (รูปถ่ายทั่วไปไม่เกินอยู่แล้ว)
 - **กันส่งซ้ำ**: แต่ละเครื่องจำว่าส่งรูปไหนไปแล้ว จะไม่ส่งซ้ำ (จำแยกต่อเครื่อง)
-- ใครถือ Bot Token จะโพสต์เข้ากลุ่มได้ เก็บ token เป็นความลับ เหมาะกับกลุ่มส่วนตัว/ทีมงาน
+- ใครถือ Bot Token จะโพสต์เข้ากลุ่มได้ เก็บ token เป็นความลับ เหมาะกับกลุ่มส่วนตัว/ทีมงาน — **`secrets.properties` ห้าม commit เข้า git เด็ดขาด** (มี `.gitignore` กันไว้แล้ว) และ apk ที่ build ออกมาก็แกะดู token ได้ถ้ามีคนเอาไปแกะ ดังนั้นอย่าแจก apk ให้คนนอกกลุ่มที่ไว้ใจ
 - แอปหน่วงเวลาเล็กน้อยระหว่างส่งแต่ละรูป เพื่อกันโดน Telegram จำกัดอัตรา (rate limit) เวลาส่งทีละหลายรูป
 - นี่คือ debug APK สำหรับใช้เอง (sideload) ไม่ได้ทำมาขึ้น Play Store
 
@@ -66,14 +79,16 @@
 PhotoCollector/
 ├─ app/src/main/
 │  ├─ java/com/photocollector/app/
-│  │  ├─ MainActivity.kt      ← หน้าจอ: ใส่ token/chatid, ทดสอบ, สวิตช์อัตโนมัติ
+│  │  ├─ MainActivity.kt      ← หน้าจอ: ตั้งชื่อเครื่อง/Prefix, ทดสอบ, สวิตช์อัตโนมัติ
 │  │  ├─ CollectorService.kt  ← บริการเบื้องหลัง เฝ้าดูรูปใหม่แล้วส่ง
 │  │  ├─ PhotoCollector.kt    ← PhotoSync: อ่านรูปจาก MediaStore + กันส่งซ้ำ
 │  │  ├─ TelegramApi.kt       ← เรียก Bot API (sendDocument/sendMessage)
 │  │  ├─ BootReceiver.kt      ← เปิดบริการต่อหลังรีบูต
-│  │  └─ Prefs.kt             ← เก็บ token/chatid/ประวัติการส่ง
+│  │  └─ Prefs.kt             ← เก็บ prefix/ประวัติการส่ง (ไม่มี token/chatid แล้ว)
 │  ├─ res/                    ← หน้าตา UI + ไอคอน
 │  └─ AndroidManifest.xml
-├─ .github/workflows/build.yml ← build .apk อัตโนมัติบนคลาวด์
-└─ build.gradle / settings.gradle
+├─ secrets.properties.example ← template ของ BOT_TOKEN/CHAT_ID (คัดลอกเป็น secrets.properties)
+├─ secrets.properties          ← ค่าจริง (gitignore ไว้ ไม่ commit)
+├─ .github/workflows/build.yml ← build .apk อัตโนมัติบนคลาวด์ (ดึง secrets จาก GitHub Actions)
+└─ build.gradle                ← อ่าน secrets.properties เข้า BuildConfig.BOT_TOKEN/CHAT_ID
 ```

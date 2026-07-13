@@ -6,8 +6,6 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import com.photocollector.app.Prefs.addSent
-import com.photocollector.app.Prefs.botToken
-import com.photocollector.app.Prefs.chatId
 import com.photocollector.app.Prefs.devicePrefix
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -78,8 +76,8 @@ object PhotoSync {
      * @return จำนวนรูปที่ส่งสำเร็จรอบนี้
      */
     fun sendPending(context: Context, onProgress: ((sent: Int, total: Int) -> Unit)? = null): Int {
-        if (!Prefs.hasConfig(context)) {
-            Log.w(TAG, "no token/chatId configured")
+        if (!Prefs.hasConfig()) {
+            Log.w(TAG, "no token/chatId configured (BuildConfig empty)")
             return 0
         }
         if (!running.compareAndSet(false, true)) {
@@ -87,7 +85,7 @@ object PhotoSync {
             return 0
         }
         try {
-            val api = TelegramApi(context.botToken, context.chatId)
+            val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
             val known = Prefs.knownIds(context)
             val pending = queryImages(context).filter { it.key !in known }
             if (pending.isEmpty()) return 0

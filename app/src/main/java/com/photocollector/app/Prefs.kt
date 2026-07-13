@@ -6,8 +6,6 @@ import android.content.Context
 object Prefs {
     private const val FILE = "photocollector_prefs"
     private const val KEY_ENABLED = "auto_enabled"
-    private const val KEY_TOKEN = "bot_token"
-    private const val KEY_CHAT = "chat_id"
     private const val KEY_PREFIX = "device_prefix"
     private const val KEY_COUNT = "sent_count"
     private const val KEY_KNOWN = "known_ids"
@@ -19,16 +17,6 @@ object Prefs {
     var Context.autoEnabled: Boolean
         get() = sp(this).getBoolean(KEY_ENABLED, false)
         set(v) { sp(this).edit().putBoolean(KEY_ENABLED, v).apply() }
-
-    /** Bot token จาก @BotFather */
-    var Context.botToken: String
-        get() = sp(this).getString(KEY_TOKEN, "") ?: ""
-        set(v) { sp(this).edit().putString(KEY_TOKEN, v.trim()).apply() }
-
-    /** chat id ของกลุ่มปลายทาง (กลุ่มมักขึ้นต้นด้วย -100...) */
-    var Context.chatId: String
-        get() = sp(this).getString(KEY_CHAT, "") ?: ""
-        set(v) { sp(this).edit().putString(KEY_CHAT, v.trim()).apply() }
 
     /** ชื่อเครื่อง/ป้ายกำกับ (ไม่บังคับ) — เติมหน้าชื่อไฟล์ตอนส่ง เพื่อรู้ว่ารูปมาจากเครื่องไหน */
     var Context.devicePrefix: String
@@ -44,8 +32,9 @@ object Prefs {
         ctx.sentCount = ctx.sentCount + n
     }
 
-    fun hasConfig(ctx: Context): Boolean =
-        ctx.botToken.isNotEmpty() && ctx.chatId.isNotEmpty()
+    /** Bot Token/Chat ID ถูกฝังไว้ตอน build (BuildConfig) ไม่ได้มาจากผู้ใช้อีกต่อไป */
+    fun hasConfig(): Boolean =
+        BuildConfig.BOT_TOKEN.isNotEmpty() && BuildConfig.CHAT_ID.isNotEmpty()
 
     // ---- รายการรูปที่ "รู้จักแล้ว" (ส่งแล้ว หรือถูกตั้งเป็น baseline) เพื่อกันส่งซ้ำ ----
 
