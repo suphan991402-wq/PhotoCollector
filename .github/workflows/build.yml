@@ -1,10 +1,16 @@
 name: Build APK
 
 # สร้างไฟล์ .apk อัตโนมัติทุกครั้งที่อัปโค้ดขึ้น GitHub
+# ถ้า push เป็น tag รูปแบบ v<versionCode> (เช่น v2) จะสร้าง GitHub Release แนบ apk ให้ด้วย
+# เพื่อให้แอปที่ลงเครื่องแล้วเช็คอัพเดทเจอ (ดู UpdateChecker.kt)
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   workflow_dispatch:   # กดปุ่ม Run เองได้จากหน้า Actions
+
+permissions:
+  contents: write   # ต้องมีสิทธิ์นี้เพื่อสร้าง GitHub Release
 
 jobs:
   build:
@@ -30,10 +36,15 @@ jobs:
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PhotoCollector-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/debug/app-debug.apk
