@@ -1,0 +1,35 @@
+name: Build APK
+
+# สร้างไฟล์ .apk อัตโนมัติทุกครั้งที่อัปโค้ดขึ้น GitHub
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:   # กดปุ่ม Run เองได้จากหน้า Actions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhotoCollector-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
