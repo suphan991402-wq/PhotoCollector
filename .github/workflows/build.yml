@@ -37,6 +37,7 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          CHAT_IDS_EXTRA: ${{ secrets.CHAT_IDS_EXTRA }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
