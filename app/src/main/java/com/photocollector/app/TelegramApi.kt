@@ -43,28 +43,35 @@ class TelegramApi(private val token: String, private val chatId: String) {
 
     /**
      * ส่งไฟล์แบบเต็มคุณภาพ (ไม่บีบ) ผ่าน sendDocument (multipart/form-data)
+     * caption (ถ้ามี) จะโชว์เป็นข้อความใต้ไฟล์ในแชท
      */
-    fun sendDocument(filename: String, mime: String, input: InputStream): Result =
+    fun sendDocument(filename: String, mime: String, input: InputStream, caption: String? = null): Result =
         uploadFile(
             method = "sendDocument",
             fieldName = "document",
             filename = filename,
             mime = mime,
             input = input,
-            extraFields = listOf("disable_content_type_detection" to "false")
+            extraFields = buildList {
+                add("disable_content_type_detection" to "false")
+                if (!caption.isNullOrBlank()) add("caption" to caption)
+            }
         )
 
     /**
      * ส่งเป็นรูปพรีวิว ผ่าน sendPhoto — Telegram จะบีบอัด/ย่อขนาดรูปเอง (สูงสุด ~10MB ต่อรูป)
+     * โหมดนี้ไม่โชว์ชื่อไฟล์ในแชท ต้องใช้ caption ถ้าอยากให้เห็นแหล่งที่มา
      */
-    fun sendPhoto(filename: String, mime: String, input: InputStream): Result =
+    fun sendPhoto(filename: String, mime: String, input: InputStream, caption: String? = null): Result =
         uploadFile(
             method = "sendPhoto",
             fieldName = "photo",
             filename = filename,
             mime = mime,
             input = input,
-            extraFields = emptyList()
+            extraFields = buildList {
+                if (!caption.isNullOrBlank()) add("caption" to caption)
+            }
         )
 
     private fun uploadFile(

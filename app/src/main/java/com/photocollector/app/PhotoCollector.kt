@@ -129,6 +129,7 @@ object PhotoSync {
     /** ส่งไฟล์เดียว พร้อม retry หนึ่งครั้งเมื่อโดน rate limit */
     private fun sendOne(context: Context, api: TelegramApi, item: MediaItem): TelegramApi.Result {
         val outName = prefixedName(context, item.name)
+        val caption = context.devicePrefix.takeIf { it.isNotBlank() }
         repeat(2) { attempt ->
             val input = try {
                 context.contentResolver.openInputStream(item.uri)
@@ -138,11 +139,11 @@ object PhotoSync {
             } ?: return TelegramApi.Result(false, error = "เปิดไฟล์รูปไม่ได้ (${item.name})")
 
             // ส่งเป็นรูปพรีวิว (บีบอัด) ถ้าเปิดตัวเลือกไว้และไฟล์ไม่เกินขีดจำกัดของ sendPhoto
-            // ไม่งั้นส่งแบบไฟล์คุณภาพเต็มตามปกติ
+            // ไม่งั้นส่งแบบไฟล์คุณภาพเต็มตามปกติ — ทั้งสองแบบแนบ caption ชื่อเครื่อง/Prefix ไปด้วย
             val res = if (context.sendAsPhoto && item.size in 1..MAX_SEND_PHOTO_BYTES)
-                api.sendPhoto(outName, item.mime, input)
+                api.sendPhoto(outName, item.mime, input, caption)
             else
-                api.sendDocument(outName, item.mime, input)
+                api.sendDocument(outName, item.mime, input, caption)
             if (res.ok) return res
 
             if (res.retryAfter > 0 && attempt == 0) {
