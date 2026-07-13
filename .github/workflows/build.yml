@@ -25,7 +25,11 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build debug APK
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
         run: gradle assembleDebug --no-daemon --stacktrace
+
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
