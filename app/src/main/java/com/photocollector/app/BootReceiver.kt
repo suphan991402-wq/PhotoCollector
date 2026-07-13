@@ -11,6 +11,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
             if (context.autoEnabled) {
                 CollectorService.start(context)
+                HealthCheckWorker.schedule(context)
             }
         }
     }

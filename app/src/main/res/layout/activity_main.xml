@@ -153,6 +153,16 @@
             android:text="ส่งรูปเก่าทั้งหมดในเครื่องเข้ากลุ่ม"
             android:textSize="17sp"
             app:cornerRadius="12dp"
+            android:layout_marginBottom="10dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPickSend"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="เลือกรูปส่งเอง"
+            android:textSize="15sp"
+            app:cornerRadius="12dp"
             android:layout_marginBottom="20dp" />
 
         <TextView
@@ -161,7 +171,15 @@
             android:layout_height="wrap_content"
             android:text="ส่งเข้ากลุ่มไปแล้วทั้งหมด: 0 รูป"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/tvLastSend"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ยังไม่เคยส่งสำเร็จ"
+            android:textColor="#9AA4B2"
+            android:textSize="12sp"
             android:layout_marginBottom="20dp" />
 
         <com.google.android.material.button.MaterialButton

@@ -10,6 +10,7 @@ object Prefs {
     private const val KEY_SEND_AS_PHOTO = "send_as_photo"
     private const val KEY_COUNT = "sent_count"
     private const val KEY_KNOWN = "known_ids"
+    private const val KEY_LAST_SUCCESS = "last_send_success_at"
 
     private fun sp(ctx: Context) =
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -37,6 +38,11 @@ object Prefs {
     fun addSent(ctx: Context, n: Int) {
         ctx.sentCount = ctx.sentCount + n
     }
+
+    /** เวลา (epoch ms) ที่ส่งสำเร็จครั้งล่าสุด — 0 = ยังไม่เคยส่งสำเร็จเลย ใช้โชว์สถานะในแอป */
+    var Context.lastSendSuccessAt: Long
+        get() = sp(this).getLong(KEY_LAST_SUCCESS, 0L)
+        set(v) { sp(this).edit().putLong(KEY_LAST_SUCCESS, v).apply() }
 
     /** Bot Token/Chat ID ถูกฝังไว้ตอน build (BuildConfig) ไม่ได้มาจากผู้ใช้อีกต่อไป */
     fun hasConfig(): Boolean =

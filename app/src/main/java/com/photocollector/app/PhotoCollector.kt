@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.photocollector.app.Prefs.addSent
 import com.photocollector.app.Prefs.devicePrefix
+import com.photocollector.app.Prefs.lastSendSuccessAt
 import com.photocollector.app.Prefs.sendAsPhoto
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -137,6 +138,73 @@ object PhotoSync {
         return sendOne(context, api, latest)
     }
 
+    /**
+     * ส่งรูปที่ผู้ใช้เลือกเองผ่าน Photo Picker (ไม่ผ่านระบบกันส่งซ้ำแบบ auto-scan)
+     * ทำเครื่องหมาย known ให้ทุกรูปที่ส่งสำเร็จ กัน auto-mode สแกนเจอแล้วส่งซ้ำทีหลัง
+     */
+    fun sendPickedUris(
+        context: Context, uris: List<Uri>, onProgress: ((sent: Int, total: Int) -> Unit)? = null
+    ): SyncResult {
+        if (!Prefs.hasConfig()) return SyncResult(0, 0, "แอปยังไม่ได้ตั้งค่า Bot")
+        if (uris.isEmpty()) return SyncResult(0, 0, null)
+        val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
+
+        var sent = 0
+        var lastError: String? = null
+        for ((index, uri) in uris.withIndex()) {
+            val item = mediaItemFromUri(context, uri)
+            if (item == null) {
+                lastError = "อ่านข้อมูลรูปไม่ได้"
+                break
+            }
+            val res = sendOne(context, api, item)
+            if (res.ok) {
+                sent++
+                Prefs.addKnown(context, listOf(item.key))
+                onProgress?.invoke(sent, uris.size)
+            } else {
+                lastError = res.error
+                Log.w(TAG, "picked upload stop at index $index: ${res.error}")
+                break
+            }
+            if (index < uris.size - 1) {
+                try { Thread.sleep(DELAY_BETWEEN_MS) } catch (_: InterruptedException) {}
+            }
+        }
+        if (sent > 0) addSent(context, sent)
+        return SyncResult(sent, uris.size, lastError)
+    }
+
+    /** อ่าน metadata ของรูปจาก content:// uri (รองรับทั้ง MediaStore ปกติและ uri จาก system Photo Picker) */
+    private fun mediaItemFromUri(context: Context, uri: Uri): MediaItem? {
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.DATE_MODIFIED
+        )
+        return try {
+            context.contentResolver.query(uri, projection, null, null, null)?.use { c ->
+                if (!c.moveToFirst()) return@use null
+                val idCol = c.getColumnIndex(MediaStore.MediaColumns._ID)
+                val nameCol = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                val sizeCol = c.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                val mimeCol = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
+                val dateCol = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
+                val id = (if (idCol >= 0) c.getLong(idCol) else null) ?: (uri.lastPathSegment?.filter { it.isDigit() }?.toLongOrNull() ?: 0L)
+                val name = if (nameCol >= 0) c.getString(nameCol) else null
+                val size = if (sizeCol >= 0) c.getLong(sizeCol) else 0L
+                val mime = if (mimeCol >= 0) c.getString(mimeCol) else null
+                val date = if (dateCol >= 0) c.getLong(dateCol) else System.currentTimeMillis() / 1000
+                MediaItem(id, name ?: "photo_$id.jpg", size, mime ?: "image/jpeg", uri, "$id:$date")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "cannot read picked uri $uri: ${e.message}")
+            null
+        }
+    }
+
     /** ส่งข้อความทดสอบไปยังทุกปลายทาง (หลัก + เพิ่มเติม) คืนผลของปลายทางหลักเป็นตัวชี้วัดสำเร็จ/ไม่สำเร็จ */
     fun sendTestMessageToAll(text: String): TelegramApi.Result {
         val primary = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID).sendMessage(text)
@@ -177,6 +245,7 @@ object PhotoSync {
             else
                 api.sendDocument(outName, item.mime, input, caption)
             if (res.ok) {
+                context.lastSendSuccessAt = System.currentTimeMillis()
                 sendToExtraDestinations(context, item, outName, caption, asPhoto)
                 return res
             }

@@ -23,8 +23,8 @@ android {
         applicationId "com.photocollector.app"
         minSdk 24
         targetSdk 34
-        versionCode 12
-        versionName "2.1"
+        versionCode 13
+        versionName "2.2"
         buildConfigField "String", "BOT_TOKEN", "\"${botToken}\""
         buildConfigField "String", "CHAT_ID", "\"${chatId}\""
         buildConfigField "String", "CHAT_IDS_EXTRA", "\"${chatIdsExtra}\""
@@ -70,4 +70,6 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.lifecycle:lifecycle-service:2.8.4'
+    implementation 'androidx.activity:activity-ktx:1.9.0'
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
 }

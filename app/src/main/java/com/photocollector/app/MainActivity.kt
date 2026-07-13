@@ -2,15 +2,18 @@ package com.photocollector.app
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.photocollector.app.Prefs.autoEnabled
 import com.photocollector.app.Prefs.devicePrefix
+import com.photocollector.app.Prefs.lastSendSuccessAt
 import com.photocollector.app.Prefs.sendAsPhoto
 import com.photocollector.app.Prefs.sentCount
 import com.photocollector.app.databinding.ActivityMainBinding
@@ -37,6 +40,13 @@ class MainActivity : AppCompatActivity() {
         }
         setSwitchChecked(autoEnabled)
         pendingAction = null
+    }
+
+    /** system Photo Picker — เลือกรูปได้เองโดยไม่ต้องขอสิทธิ์อ่านรูปทั้งเครื่อง */
+    private val pickPhotosLauncher = registerForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        if (uris.isNotEmpty()) sendPickedPhotos(uris)
     }
 
     /** ตั้งค่าสวิตช์โดยไม่ยิง listener ซ้ำ (กันการ re-entrant เมื่อโปรแกรมเปลี่ยนค่าเอง) */
@@ -88,6 +98,7 @@ class MainActivity : AppCompatActivity() {
                         PhotoSync.markAllExistingAsKnown(applicationContext)
                         runOnUiThread {
                             CollectorService.start(this)
+                            HealthCheckWorker.schedule(applicationContext)
                             toast("เปิดส่งอัตโนมัติแล้ว (เฉพาะรูปใหม่หลังจากนี้)")
                             setSwitchChecked(true)
                         }
@@ -98,6 +109,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 autoEnabled = false
                 CollectorService.stop(this)
+                HealthCheckWorker.cancel(applicationContext)
                 toast("ปิดส่งอัตโนมัติแล้ว")
             }
         }
@@ -109,6 +121,17 @@ class MainActivity : AppCompatActivity() {
             }
             savePrefixField()
             ensurePermsThen { sendAllExisting() }
+        }
+
+        b.btnPickSend.setOnClickListener {
+            if (!Prefs.hasConfig()) {
+                toast("แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)")
+                return@setOnClickListener
+            }
+            savePrefixField()
+            pickPhotosLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
         }
 
         b.tvVersion.text = "v${BuildConfig.VERSION_CODE}"
@@ -128,6 +151,20 @@ class MainActivity : AppCompatActivity() {
         else
             "⚠️ แอปยังไม่ได้ตั้งค่า Bot (ติดต่อผู้พัฒนา)"
         b.tvCount.text = "ส่งเข้ากลุ่มไปแล้วทั้งหมด: ${sentCount} รูป"
+        b.tvLastSend.text = "ส่งสำเร็จล่าสุด: ${formatRelativeTime(lastSendSuccessAt)}"
+    }
+
+    /** แปลงเวลา epoch ms เป็นข้อความบอกว่าผ่านมานานแค่ไหนแบบไทย ๆ */
+    private fun formatRelativeTime(atMillis: Long): String {
+        if (atMillis <= 0L) return "ยังไม่เคยส่งสำเร็จ"
+        val diffMs = System.currentTimeMillis() - atMillis
+        val minutes = diffMs / 60_000
+        return when {
+            minutes < 1 -> "เมื่อสักครู่"
+            minutes < 60 -> "$minutes นาทีที่แล้ว"
+            minutes < 60 * 24 -> "${minutes / 60} ชั่วโมงที่แล้ว"
+            else -> "${minutes / (60 * 24)} วันที่แล้ว"
+        }
     }
 
     private fun savePrefixField() {
@@ -175,6 +212,25 @@ class MainActivity : AppCompatActivity() {
                     when {
                         result.sent > 0 -> "ส่งรูปเก่าเข้ากลุ่ม ${result.sent} รูปแล้ว"
                         result.pendingCount == 0 -> "ไม่พบรูปในเครื่องเลย"
+                        else -> "ส่งไม่สำเร็จ: ${result.error ?: "ไม่ทราบสาเหตุ"}"
+                    }
+                )
+            }
+        }
+    }
+
+    private fun sendPickedPhotos(uris: List<Uri>) {
+        toast("กำลังส่ง ${uris.size} รูปที่เลือก…")
+        io.execute {
+            val result = PhotoSync.sendPickedUris(applicationContext, uris) { sent, total ->
+                runOnUiThread { b.tvStatus.text = "กำลังส่ง $sent/$total …" }
+            }
+            runOnUiThread {
+                refreshStatus()
+                toast(
+                    when {
+                        result.sent == uris.size -> "ส่งครบ ${result.sent} รูปแล้ว"
+                        result.sent > 0 -> "ส่งได้ ${result.sent}/${uris.size} รูป — ${result.error ?: "หยุดกลางทาง"}"
                         else -> "ส่งไม่สำเร็จ: ${result.error ?: "ไม่ทราบสาเหตุ"}"
                     }
                 )
