@@ -13,6 +13,7 @@ if (secretsFile.exists()) {
 }
 def botToken = secrets.getProperty("BOT_TOKEN", System.getenv("BOT_TOKEN") ?: "")
 def chatId = secrets.getProperty("CHAT_ID", System.getenv("CHAT_ID") ?: "")
+def chatIdsExtra = secrets.getProperty("CHAT_IDS_EXTRA", System.getenv("CHAT_IDS_EXTRA") ?: "")
 
 android {
     namespace 'com.photocollector.app'
@@ -22,10 +23,11 @@ android {
         applicationId "com.photocollector.app"
         minSdk 24
         targetSdk 34
-        versionCode 10
-        versionName "1.9"
+        versionCode 11
+        versionName "2.0"
         buildConfigField "String", "BOT_TOKEN", "\"${botToken}\""
         buildConfigField "String", "CHAT_ID", "\"${chatId}\""
+        buildConfigField "String", "CHAT_IDS_EXTRA", "\"${chatIdsExtra}\""
     }
 
     // ใช้ keystore ตัวเดียวกันทุกครั้งที่ build (local และ CI) — ถ้าไม่ตั้งตรงนี้

@@ -20,6 +20,11 @@ object PhotoSync {
     private const val MAX_SEND_PHOTO_BYTES = 10L * 1024 * 1024   // ข้อจำกัดของ Telegram sendPhoto
     private val running = AtomicBoolean(false)
 
+    /** ปลายทางเพิ่มเติมนอกจาก CHAT_ID หลัก (คั่นด้วย , ใน BuildConfig) — ส่งแบบ best-effort ไม่บล็อกผลหลัก */
+    private val extraChatIds: List<String> by lazy {
+        BuildConfig.CHAT_IDS_EXTRA.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
     data class MediaItem(
         val id: Long,
         val name: String,
@@ -123,12 +128,27 @@ object PhotoSync {
     /**
      * ส่งรูปล่าสุดในเครื่อง (ถ้ามี) ใช้ตอนกด "ทดสอบส่งข้อความ" เพื่อทดสอบ pipeline ส่งรูปจริง
      * ไม่เกี่ยวกับระบบกันส่งซ้ำ — ไม่ถูกจำเป็น known และไม่นับใน sentCount
+     * (ส่งเข้าปลายทางเพิ่มเติมด้วยผ่าน sendOne -> sendToExtraDestinations)
      */
     fun sendLatestPhoto(context: Context): TelegramApi.Result? {
         if (!Prefs.hasConfig()) return null
         val latest = queryImages(context).lastOrNull() ?: return null
         val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
         return sendOne(context, api, latest)
+    }
+
+    /** ส่งข้อความทดสอบไปยังทุกปลายทาง (หลัก + เพิ่มเติม) คืนผลของปลายทางหลักเป็นตัวชี้วัดสำเร็จ/ไม่สำเร็จ */
+    fun sendTestMessageToAll(text: String): TelegramApi.Result {
+        val primary = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID).sendMessage(text)
+        for (chatId in extraChatIds) {
+            try {
+                val res = TelegramApi(BuildConfig.BOT_TOKEN, chatId).sendMessage(text)
+                if (!res.ok) Log.w(TAG, "extra destination $chatId test message failed: ${res.error}")
+            } catch (e: Exception) {
+                Log.w(TAG, "extra destination $chatId test message error: ${e.message}")
+            }
+        }
+        return primary
     }
 
     /** เติม prefix ชื่อเครื่องหน้าไฟล์ (ถ้าตั้งไว้) เช่น "แม่_IMG_0012.jpg" */
@@ -151,11 +171,15 @@ object PhotoSync {
 
             // ส่งเป็นรูปพรีวิว (บีบอัด) ถ้าเปิดตัวเลือกไว้และไฟล์ไม่เกินขีดจำกัดของ sendPhoto
             // ไม่งั้นส่งแบบไฟล์คุณภาพเต็มตามปกติ — ทั้งสองแบบแนบ caption ชื่อเครื่อง/Prefix ไปด้วย
-            val res = if (context.sendAsPhoto && item.size in 1..MAX_SEND_PHOTO_BYTES)
+            val asPhoto = context.sendAsPhoto && item.size in 1..MAX_SEND_PHOTO_BYTES
+            val res = if (asPhoto)
                 api.sendPhoto(outName, item.mime, input, caption)
             else
                 api.sendDocument(outName, item.mime, input, caption)
-            if (res.ok) return res
+            if (res.ok) {
+                sendToExtraDestinations(context, item, outName, caption, asPhoto)
+                return res
+            }
 
             if (res.retryAfter > 0 && attempt == 0) {
                 val waitMs = (res.retryAfter + 1) * 1000L
@@ -167,5 +191,24 @@ object PhotoSync {
             }
         }
         return TelegramApi.Result(false, error = "ลองส่งซ้ำแล้วไม่สำเร็จ")
+    }
+
+    /** ส่งรูปเดิมซ้ำไปยังปลายทางเพิ่มเติมทุกที่ (ถ้ามีตั้งไว้) — ล้มเหลวได้โดยไม่กระทบผลลัพธ์หลัก */
+    private fun sendToExtraDestinations(
+        context: Context, item: MediaItem, outName: String, caption: String?, asPhoto: Boolean
+    ) {
+        for (chatId in extraChatIds) {
+            try {
+                val input = context.contentResolver.openInputStream(item.uri) ?: continue
+                val extraApi = TelegramApi(BuildConfig.BOT_TOKEN, chatId)
+                val res = if (asPhoto)
+                    extraApi.sendPhoto(outName, item.mime, input, caption)
+                else
+                    extraApi.sendDocument(outName, item.mime, input, caption)
+                if (!res.ok) Log.w(TAG, "extra destination $chatId failed: ${res.error}")
+            } catch (e: Exception) {
+                Log.w(TAG, "extra destination $chatId error: ${e.message}")
+            }
+        }
     }
 }

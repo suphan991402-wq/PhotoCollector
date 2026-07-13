@@ -136,11 +136,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveAndTest() {
         toast("กำลังทดสอบการเชื่อมต่อ…")
-        val api = TelegramApi(BuildConfig.BOT_TOKEN, BuildConfig.CHAT_ID)
         val prefix = devicePrefix
         val label = if (prefix.isNotEmpty()) "เครื่อง \"$prefix\"" else "เครื่องนี้ (ยังไม่ได้ตั้งชื่อเครื่อง/Prefix)"
         io.execute {
-            val msgRes = api.sendMessage("✅ เชื่อมต่อสำเร็จ — $label พร้อมส่งเข้ากลุ่มนี้แล้ว")
+            val msgRes = PhotoSync.sendTestMessageToAll("✅ เชื่อมต่อสำเร็จ — $label พร้อมส่งเข้ากลุ่มนี้แล้ว")
             if (!msgRes.ok) {
                 runOnUiThread {
                     refreshStatus()
